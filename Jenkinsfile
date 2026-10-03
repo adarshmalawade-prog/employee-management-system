@@ -129,7 +129,7 @@ pipeline {
                 sh '''
                     # Test 1: Direct backend health check endpoint
                     echo "Checking Backend Health endpoint (/api/health)..."
-                    curl -sf http://localhost:5000/api/health > /dev/null || {
+                    curl -sf http://host.docker.internal:5000/api/health > /dev/null || {
                         echo "[ERROR] Backend health check endpoint failed!"
                         exit 1
                     }
@@ -137,7 +137,7 @@ pipeline {
 
                     # Test 2: Frontend static page reachable through Nginx
                     echo "Checking Frontend web server endpoint (/)..."
-                    curl -sf http://localhost:3000/ > /dev/null || {
+                    curl -sf http://host.docker.internal:3000/ > /dev/null || {
                         echo "[ERROR] Frontend web server is not reachable!"
                         exit 1
                     }
@@ -145,7 +145,7 @@ pipeline {
 
                     # Test 3: Reverse proxy route through Frontend Nginx
                     echo "Checking Nginx reverse proxy endpoint (/api/health)..."
-                    curl -sf http://localhost:3000/api/health > /dev/null || {
+                    curl -sf http://host.docker.internal:3000/api/health > /dev/null || {
                         echo "[ERROR] Nginx reverse proxy to backend failed!"
                         exit 1
                     }
