@@ -10,7 +10,7 @@ The goal of this project is to build a real-world, production-ready Employee Man
 - Live backend connection health monitoring.
 - Dynamic workforce statistics and metrics.
 - Centralized error handling and input validation.
-- Containerized multi-service architecture (Frontend, Backend, Database).
+- Multi-container architecture orchestrating Frontend, Backend, and PostgreSQL Database via Docker Compose.
 - Automated CI/CD pipeline using Jenkins to test, build, and deploy container images safely with health checks and rollback mechanisms.
 
 ---
@@ -19,100 +19,122 @@ The goal of this project is to build a real-world, production-ready Employee Man
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Frontend** *(Phase 3)* | React 18, TypeScript, Vite, CSS | Modern, responsive employee management dashboard |
-| **Backend** *(Phase 2)* | Node.js, Express, TypeScript | RESTful API with validation and centralized error handling |
-| **Database** *(Phase 2)* | PostgreSQL (`pg` driver) | Relational database with SQL migrations and indexing |
-| **Testing** *(Phase 2)* | Jest, Supertest, `ts-jest` | Automated unit & integration tests for API endpoints |
+| **Frontend** | React 18, TypeScript, Vite, Nginx | Modern, responsive dashboard served through high-performance Nginx |
+| **Backend** | Node.js, Express, TypeScript | RESTful API with validation and centralized error handling |
+| **Database** | PostgreSQL 16 (`pg` driver) | Relational database with SQL migrations and indexing |
+| **Testing** | Jest, Supertest, `ts-jest` | Automated unit & integration tests for API endpoints |
+| **Containerization** | Docker, Docker Compose | Multi-container orchestration, health checks, and named volume persistence |
 | **Version Control** | Git & GitHub | Source code tracking and pipeline triggering |
-| **Containerization** | Docker, Docker Compose | Multi-container orchestration |
-| **CI/CD Automation** | Jenkins (`Jenkinsfile`) | Automated checkout, testing, image building, deployment, and verification |
+| **CI/CD Automation** *(Phase 5)* | Jenkins (`Jenkinsfile`) | Automated checkout, testing, image building, deployment, and verification |
 
 ---
 
-## 🏗️ Project Architecture
+## 🐳 Running with Docker (Phase 4A)
+
+### 1. Requirements
+- **Docker Desktop** installed and running on Windows (with WSL2 backend enabled).
+- Git.
+
+### 2. Architecture & Networking
 
 ```
-employee-management-system/
-├── backend/
-│   ├── src/
-│   │   ├── config/database.ts            # PostgreSQL connection pool with pg.Pool
-│   │   ├── controllers/                  # CRUD and Health check controllers
-│   │   ├── middleware/                   # Error handler and input validation
-│   │   ├── models/                       # Parameterized SQL data access layer
-│   │   ├── routes/                       # Express REST API routes
-│   │   ├── app.ts                        # Express application instance
-│   │   └── server.ts                     # Server entry point
-│   ├── tests/                            # Jest + Supertest suites
-│   ├── migrations/                       # SQL table creation DDL
-│   └── seeds/                            # Sample database seed data
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navbar.tsx                # Header with live connection status
-│   │   │   ├── StatsCards.tsx            # Dynamic metrics (Employees, Depts, Roles, Avg Salary)
-│   │   │   ├── SearchBar.tsx             # Search input, department/role filters & Reset
-│   │   │   ├── EmployeeTable.tsx         # Employee list table with Edit/Delete actions
-│   │   │   ├── EmployeeModal.tsx         # Add/Edit employee dialog
-│   │   │   ├── EmployeeForm.tsx          # Form validation & input controls
-│   │   │   ├── DeleteConfirmModal.tsx    # Deletion confirmation modal
-│   │   │   └── NotificationToast.tsx     # Feedback alert notifications
-│   │   ├── pages/
-│   │   │   └── Dashboard.tsx             # Main dashboard controller view
-│   │   ├── services/
-│   │   │   └── employeeApi.ts            # Frontend API client layer
-│   │   ├── types/
-│   │   │   └── employee.ts               # TypeScript data interfaces
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── styles.css                    # Professional responsive stylesheet
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-│
-├── docker/
-│   └── docker-compose.db.yml             # Standalone local PostgreSQL container
-├── .env.example
-└── README.md
+  [ Web Browser ]
+        │
+        ▼ (Port 3000)
+┌─────────────────────────────────────────────────────────────┐
+│ Docker Network: ems_network                                 │
+│                                                             │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │  Frontend Container (ems-frontend: Nginx)           │   │
+│   │  - Serves static React SPA build files (Port 80)     │   │
+│   │  - Reverse-proxies /api/ requests to Backend container│  │
+│   └──────────────────────────┬──────────────────────────┘   │
+│                              │                              │
+│                              │ /api/ (Internal Port 5000)   │
+│                              ▼                              │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │  Backend Container (ems-backend: Node.js)           │   │
+│   │  - Express REST API & Health check                  │   │
+│   │  - Automatic idempotent migration & seed on startup │   │
+│   └──────────────────────────┬──────────────────────────┘   │
+│                              │                              │
+│                              │ SQL Queries (Port 5432)      │
+│                              ▼                              │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │  PostgreSQL Container (ems-postgres: Postgres 16)   │   │
+│   │  - Database: employee_db                            │   │
+│   │  - Persistent storage mounted on ems_postgres_data  │   │
+│   └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+> **Important:** The browser runs outside the Docker network. The React application sends requests to the relative path `/api`, which Nginx forwards internally to `http://backend:5000/api/`. The browser never needs to resolve the Docker-internal hostname `backend`.
 
 ---
 
-## 🚀 How to Run the Application Locally
+### 3. Start the Full Application Stack
 
-### Step 1: Start PostgreSQL Database
+Run from the project root directory (`D:\employee-management-system`):
+
+```powershell
+docker compose up --build
+```
+
+*(To run in background/detached mode, add the `-d` flag: `docker compose up --build -d`)*
+
+### 4. Access the Services
+
+- **Frontend Dashboard:** [http://localhost:3000](http://localhost:3000)
+- **Backend API Direct:** [http://localhost:5000/api/employees](http://localhost:5000/api/employees)
+- **Backend Health Check:** [http://localhost:5000/api/health](http://localhost:5000/api/health) (or through frontend proxy: [http://localhost:3000/api/health](http://localhost:3000/api/health))
+
+### 5. Check Container Status and Healthchecks
+
+```powershell
+docker compose ps
+```
+
+### 6. Stop the Application
+
+```powershell
+docker compose down
+```
+
+### 7. Database Persistence & Reset
+
+- **Data Persistence:** PostgreSQL stores its data inside the named Docker volume `ems_postgres_data`. When you stop the containers with `docker compose down` and restart them with `docker compose up`, all employee records and updates are preserved.
+- **Complete Database Reset:**
+  ```powershell
+  docker compose down -v
+  ```
+  > ⚠️ **Warning:** The `-v` flag deletes all Docker volumes associated with the project, including the database volume. Use this only when you explicitly want to start with a fresh database and re-seed sample data.
+
+---
+
+## 💻 Local Development (Without Docker Compose)
+
+If you prefer to run services individually on the host machine:
+
+### 1. Start Standalone PostgreSQL
 ```powershell
 docker compose -f docker/docker-compose.db.yml up -d
 ```
 
-### Step 2: Start the Backend API
+### 2. Start Backend API
 ```powershell
-cd d:\employee-management-system\backend
+cd backend
 npm install
 npm run migrate
 npm run seed
 npm run dev
 ```
-*Backend runs at:* `http://localhost:5000` (Health check: `http://localhost:5000/api/health`)
 
-### Step 3: Start the Frontend Dashboard
+### 3. Start Frontend Dashboard
 ```powershell
-cd d:\employee-management-system\frontend
+cd frontend
 npm install
 npm run dev
 ```
-*Frontend runs at:* `http://localhost:3000`
-
----
-
-## 📡 Backend API Endpoints
-
-- **`GET /api/health`** — Verify API and PostgreSQL connection status.
-- **`GET /api/employees`** — List all employees (supports `?search=`, `?department=`, `?role=`).
-- **`GET /api/employees/:id`** — Get a single employee by ID.
-- **`POST /api/employees`** — Create a new employee record.
-- **`PUT /api/employees/:id`** — Update an existing employee record.
-- **`DELETE /api/employees/:id`** — Delete an employee record.
 
 ---
 
@@ -121,6 +143,6 @@ npm run dev
 - [x] **Phase 1: Project Initialization & Environment Audit**
 - [x] **Phase 2: Backend API & PostgreSQL Database Layer**
 - [x] **Phase 3: React + TypeScript Employee Dashboard**
-- [ ] **Phase 4: Multi-Container Docker & Compose Setup**
-- [ ] **Phase 5: Jenkins CI/CD Pipeline (`Jenkinsfile`)**
+- [x] **Phase 4A: Multi-Container Dockerization (Postgres + Backend + Frontend/Nginx)**
+- [ ] **Phase 4B / Phase 5: Jenkins CI/CD Pipeline (`Jenkinsfile`)**
 - [ ] **Phase 6: Health Probes, Rollback & Final Documentation**
