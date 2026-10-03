@@ -1,0 +1,25 @@
+# Development Database Compose File
+# Use this to spin up a standalone PostgreSQL container locally for backend development
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ems-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: employee_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d employee_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+    driver: local
