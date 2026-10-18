@@ -32,3 +32,6 @@ Thumbs.db
 # Docker data / volumes
 pgdata/
 jenkins_home/
+
+# Local runner script
+powershell.cmd
